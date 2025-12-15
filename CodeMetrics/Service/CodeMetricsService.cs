@@ -7,7 +7,6 @@ using CodeMetricsApi.Models;
 using Newtonsoft.Json;
 using CodeMetrics.Models;
 using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
 
 namespace CodeMetrics.Service
 {
@@ -46,15 +45,14 @@ namespace CodeMetrics.Service
                 return [];
             }
 
-            return repos.Select(c => c.Repo.name).ToList();
+            return repos.Select(c => c.Name).ToList();
 
 
 
         }
         private async Task<ContentResult> UpdateBranches(string repoName, string? branch)
         {
-            try
-            {
+
                 var branches = await _client.GetBranchesAsync(repoName);
 
                 if (branches is null)
@@ -108,18 +106,8 @@ namespace CodeMetrics.Service
                     Content = $"Added {newBranches.Count} branches \n",
                     ContentType = "application/json",
                 };
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating commits: {ex.Message}");
-
-                return new ContentResult
-                {
-                    StatusCode = 500,
-                    Content = $"Error: {ex.Message}",
-                    ContentType = "application/json",
-                };
-            }
+            
+           
         }
         private async Task<ContentResult> UpdateRepos(string? branch, int limit)
         {
@@ -137,7 +125,7 @@ namespace CodeMetrics.Service
                     };
                 }
 
-                var repoNames = repos.Select(c => c.Repo.name).ToList();
+                var repoNames = repos.Select(c => c.Name).ToList();
 
                 var existingRepos = await _dbContext.Repositories
                     .Where(r => repoNames.Contains(r.RepoName))
@@ -148,23 +136,23 @@ namespace CodeMetrics.Service
 
                 foreach (var repo in repos)
                 {
-                    if (!existingRepos.Contains(repo.Repo.name))
+                    if (!existingRepos.Contains(repo.Name))
                     {
                         newRepos.Add(new Repository
                         {
-                            RepoName = repo.Repo.name,
+                            RepoName = repo.Name,
                             OwnerName = "Test", // дописать
-                            CreatedAt = repo.Repo.CreatedAt,
-                            UpdatedAt = repo.Repo.UpdatedAt,
+                            CreatedAt = repo.CreatedAt,
+                            UpdatedAt = repo.UpdatedAt,
                             ProjectKey = "Test",
-                            DefaultBranch = repo.Repo.DefaultBranch,
+                            DefaultBranch = repo.DefaultBranch,
                             IsFork = true, // дописать
                         });
 
-                        existingRepos.Add(repo.Repo.name);
+                        existingRepos.Add(repo.Name);
                     }
                 }
-
+                Console.Write("hello");
                 if (newRepos.Count != 0)
                 {
                     await _dbContext.Repositories.AddRangeAsync(newRepos);
@@ -173,13 +161,13 @@ namespace CodeMetrics.Service
 
                 foreach (var repo in repos)
                 {
-                    var result = await UpdateCommitsFromResponse(repo.Repo.name);
+                    var result = await UpdateCommitsFromResponse(repo.Name);
                     if (result.StatusCode != 200)
                     {
                         return result;
                     }
 
-                    var branchesResult = await UpdateBranches(repo.Repo.name, branch);
+                    var branchesResult = await UpdateBranches(repo.Name, branch);
                     if (branchesResult.StatusCode != 200)
                     {
                         return branchesResult;
@@ -606,7 +594,7 @@ namespace CodeMetrics.Service
                 {
                     StatusCode = 200,
                     Content = $"Added {newUsersList.Count} users, {newCommits.Count} commits and {newStats.Count} commitStats",
-                    ContentType = "application/json",
+                    ContentType = "plain/text",
                 };
 
                 Entity.User ResolveUser(string? email, string? name)
@@ -644,7 +632,7 @@ namespace CodeMetrics.Service
                 {
                     StatusCode = 500,
                     Content = $"Error: {ex.Message}",
-                    ContentType = "application/json",
+                    ContentType = "text/plain",
                 };
             }
         }

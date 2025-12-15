@@ -32,7 +32,7 @@ builder.Services.AddHttpClient<GiteaClient>((sp, client) =>
         throw new InvalidOperationException("Gitea:BaseUrl is not configured.");
     }
 
-    client.BaseAddress = new Uri(options.BaseUrl.TrimEnd('/'));
+    client.BaseAddress = new Uri(options.BaseUrl);
 
     if (!string.IsNullOrWhiteSpace(options.Token))
     {
@@ -43,7 +43,9 @@ builder.Services.AddHttpClient<GiteaClient>((sp, client) =>
 
 builder.Services.AddDbContext<CodeMetricsDbContext>(options =>
 {
-    options.UseNpgsql("UserName=myuser;Password=mypassword;Host=45.144.52.95;Port=5432;Database=mydatabase;");
+    options
+    .LogTo(Console.WriteLine)
+    .UseNpgsql("UserName=myuser;Password=mypassword;Host=45.144.52.95;Port=5432;Database=mydatabase;");
 });
 
 
