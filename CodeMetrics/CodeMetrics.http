@@ -1,0 +1,6 @@
+@CodeMetrics_HostAddress = http://localhost:5029
+
+GET {{CodeMetrics_HostAddress}}/GetProjects/
+Accept: application/json
+
+###

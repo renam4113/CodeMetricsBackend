@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:10
+    ports:
+      - 5434:5432
+    volumes:
+      - ./storage/postgresql-data:/var/lib/postgresql/data
+      - ./storage/files:/var/lib/postgresql/files
+    environment:
+      POSTGRES_PASSWORD: "LFYSGY0UpphAliOEgqpv"
+      POSTGRES_DB: "filedb"
+      PGDATA: "/var/lib/postgresql/data"
+    restart: always
+
+  pdadmin:
+    image: dpage/pgadmin4:7.8
+    ports:
+      - 8081:80
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "example@mail.com"
+      PGADMIN_DEFAULT_PASSWORD: "admin"
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "False"
+      PGADMIN_CONFIG_LOGIN_BANNER: "False"
+      PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: 10
+    depends_on:
+      - postgres
+    restart:  always
