@@ -33,7 +33,7 @@ public class GiteaClient
 
     public async Task<List<RepositoryInfo>> GetReposAsync()
     {
-        var result = await _httpClient.GetAsync($"/api/v1/repos/search?access_token=11508d9192baeacd90710aabd542aab57eb5e5c3");
+        var result = await _httpClient.GetAsync($"/api/v1/repos/search");
         var data = JsonSerializer.Deserialize<RepositoryApiResponse>(await result.Content.ReadAsStringAsync());
         return data.Data;
     }
