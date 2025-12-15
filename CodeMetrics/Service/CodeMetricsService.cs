@@ -1,87 +1,63 @@
 ﻿using CodeMetrics.Entity;
 using CodeMetrics.Clients;
 using Microsoft.AspNetCore.Mvc;
-using System.Text;
 using Microsoft.EntityFrameworkCore;
 using CodeMetrics.Context;
 using CodeMetricsApi.Models;
 using Newtonsoft.Json;
 using CodeMetrics.Models;
-using System.Data;
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 
 namespace CodeMetrics.Service
 {
     public class CodeMetricsService : ICodeMetricsService
     {
-        private SferaClient _client;
+        private readonly GiteaClient _client;
         private readonly CodeMetricsDbContext _dbContext;
 
-        public CodeMetricsService(CodeMetricsDbContext dbContext)
+        public CodeMetricsService(CodeMetricsDbContext dbContext, GiteaClient client)
         {
             _dbContext = dbContext;
-            _client = new SferaClient();
+            _client = client;
         }
 
 
 
-        private async Task<CommitStats> GetCommitStats(string projectKey, string reposKey, string hash)
+        public async Task<CommitStats?> GetCommitStats(string reposKey, string hash)
         {
-            try
-            {
-                var responseContent = await _client.GetCommitDiff(projectKey, reposKey, hash);
-
-                var diffResponse = JsonConvert.DeserializeObject<CommitDiffApiResponse>(responseContent);
-
-                if (diffResponse?.Data == null || string.IsNullOrEmpty(diffResponse.Data.Content))
-                {
-
-                    return null;
-                }
-
-                var base64Bytes = Convert.FromBase64String(diffResponse.Data.Content);
-                var diffContent = Encoding.UTF8.GetString(base64Bytes);
-
-                var stats = AnalyzeDiffContent(diffContent);
-
-                return new CommitStats
-                {
-                    CommitHash = hash,
-                    AddedLines = stats.addedLines,
-                    DeletedLines = stats.deletedLines,
-                    ChangedFiles = stats.changedFiles
-                };
-            }
-            catch (Exception ex)
-            {
-
-                return null;
-            }
+            var commit = await _client.GetCommitByHashAsync(reposKey, hash);
+            return new CommitStats 
+            { 
+                CommitHash = commit.hash,
+                ChangedFiles = commit.files.Count,
+                AddedLines = commit.stats.AddedLines,
+                DeletedLines = commit.stats.RemovedLines,
+                TotalChanges = commit.stats.TotalChanged
+            };
         }
 
-        public async Task<List<string>> GetReposNameByProject(string projectKey)
+        public async Task<List<string>> GetReposName()
         {
-            var reposResponse = await _client.GetRepositories(projectKey);
-            var repos = JsonConvert.DeserializeObject<RepositoryApiResponse>(reposResponse);
+            var repos = await _client.GetReposAsync();
 
-            if (repos?.Data == null || !repos.Data.Any())
+            if (repos is null)
             {
                 return [];
             }
-            return repos.Data.Select(c => c.Name).ToList();
+
+            return repos.Select(c => c.Repo.name).ToList();
 
 
 
         }
-        private async Task<ContentResult> UpdateBranches(string projectKey, string repoName, string? branch)
+        private async Task<ContentResult> UpdateBranches(string repoName, string? branch)
         {
             try
             {
-                var branchesResponse = await _client.GetBranches(projectKey, repoName);
-                var branches = JsonConvert.DeserializeObject<BranchApiResponse>(branchesResponse);
+                var branches = await _client.GetBranchesAsync(repoName);
 
-
-                if (branches?.Data == null || branches.Data.Length == 0)
+                if (branches is null)
                 {
                     return new ContentResult
                     {
@@ -91,61 +67,34 @@ namespace CodeMetrics.Service
                     };
                 }
 
+                var requestedBranches = branches.Where(b => b.Name == branch).ToArray();
 
-                var newBranches = new List<Branch>();
+                if (requestedBranches.Length == 0)
+                {
+                    return new ContentResult
+                    {
+                        StatusCode = 400,
+                        Content = $"Branch {branch} Not Found \n",
+                        ContentType = "application/json",
+                    };
+                }
 
-                List<string> branchesName = [];
-
-                if (string.IsNullOrEmpty(branch))
-                    branchesName = [.. branches.Data.Select(c => c.Name)];
-                else
-                    branchesName = [.. branches.Data.Where(b => b.Name == branch).Select(c => c.Name)];
+                var branchNames = requestedBranches.Select(c => c.Name).ToArray();
 
                 var existingBranches = await _dbContext.Branches
-                    .Where(c => branchesName.Contains(c.BranchName))
+                    .Where(c => branchNames.Contains(c.BranchName))
                     .Select(c => c.BranchName)
                     .ToHashSetAsync();
 
-                if (string.IsNullOrEmpty(branch))
-                {
-                    foreach (var branchData in branches.Data)
+                var newBranches = requestedBranches
+                    .Where(b => !existingBranches.Contains(b.Name))
+                    .Select(b => new Branch
                     {
-                        if (!existingBranches.Contains(branchData.Name))
-                        {
-                            var newbranch = new Branch()
-                            {
-                                BranchName = branchData.Name,
-                                repoName = repoName,
-                                lastCommitHash = branchData.LastCommit.hash
-                            };
-                            newBranches.Add(newbranch);
-                        }
-                    }
-                }
-                else
-                {
-                    var brachexist = await _dbContext.Branches.FirstOrDefaultAsync(p => p.BranchName == branch);
-                    if (brachexist == null)
-                    {
-                        var branchfromresp = branches.Data.FirstOrDefault(p => p.Name == branch);
-                        if (branchfromresp == null)
-                        {
-                            return new ContentResult
-                            {
-                                StatusCode = 400,
-                                Content = $"Branch {branch} Not Found \n",
-                                ContentType = "application/json",
-                            };
-                        }
-                        var newbranch = new Branch()
-                        {
-                            BranchName = branchfromresp.Name,
-                            repoName = repoName,
-                            lastCommitHash = branchfromresp.LastCommit.hash
-                        };
-                        newBranches.Add(newbranch);
-                    }
-                }
+                        BranchName = b.Name,
+                        repoName = repoName,
+                        lastCommitHash = b.LastCommit.id
+                    })
+                    .ToList();
 
                 if (newBranches.Count != 0)
                 {
@@ -159,7 +108,6 @@ namespace CodeMetrics.Service
                     Content = $"Added {newBranches.Count} branches \n",
                     ContentType = "application/json",
                 };
-
             }
             catch (Exception ex)
             {
@@ -173,16 +121,13 @@ namespace CodeMetrics.Service
                 };
             }
         }
-        private async Task<ContentResult> UpdateRepos(string projectKey, string? branch, int limit)
+        private async Task<ContentResult> UpdateRepos(string? branch, int limit)
         {
             try
             {
-                int count = 0;
-                var reposResponse = await _client.GetRepositories(projectKey);
-                var repos = JsonConvert.DeserializeObject<RepositoryApiResponse>(reposResponse);
+                var repos = await _client.GetReposAsync();
 
-
-                if (repos?.Data == null || repos.Data.Length == 0)
+                if (repos is null)
                 {
                     return new ContentResult
                     {
@@ -192,44 +137,49 @@ namespace CodeMetrics.Service
                     };
                 }
 
-
-                var reposName = repos.Data.Select(c => c.Name).ToList();
+                var repoNames = repos.Select(c => c.Repo.name).ToList();
 
                 var existingRepos = await _dbContext.Repositories
-                    .Where(r => reposName.Contains(r.RepoName))
+                    .Where(r => repoNames.Contains(r.RepoName))
                     .Select(c => c.RepoName)
                     .ToHashSetAsync();
 
+                var newRepos = new List<Repository>();
 
-
-                foreach (var repoData in repos.Data)
+                foreach (var repo in repos)
                 {
-
-                    if (!existingRepos.Contains(repoData.Name))
+                    if (!existingRepos.Contains(repo.Repo.name))
                     {
-                        var repository = new Repository()
+                        newRepos.Add(new Repository
                         {
-                            RepoName = repoData.Name,
-                            OwnerName = repoData.OwnerName,
-                            CreatedAt = repoData.CreatedAt,
-                            UpdatedAt = repoData.UpdatedAt,
-                            ProjectKey = projectKey,
-                            DefaultBranch = repoData.DefaultBranch,
-                            IsFork = repoData.IsFork
-                        };
+                            RepoName = repo.Repo.name,
+                            OwnerName = "Test", // дописать
+                            CreatedAt = repo.Repo.CreatedAt,
+                            UpdatedAt = repo.Repo.UpdatedAt,
+                            ProjectKey = "Test",
+                            DefaultBranch = repo.Repo.DefaultBranch,
+                            IsFork = true, // дописать
+                        });
 
-                        await _dbContext.Repositories.AddAsync(repository);
-                        await _dbContext.SaveChangesAsync();
-                        count++;
+                        existingRepos.Add(repo.Repo.name);
                     }
+                }
 
-                    var result = await UpdateCommitsFromResponse(projectKey, repoData.Name, branch, limit);
+                if (newRepos.Count != 0)
+                {
+                    await _dbContext.Repositories.AddRangeAsync(newRepos);
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                foreach (var repo in repos)
+                {
+                    var result = await UpdateCommitsFromResponse(repo.Repo.name);
                     if (result.StatusCode != 200)
                     {
                         return result;
                     }
 
-                    var branchesResult = await UpdateBranches(projectKey, repoData.Name, branch);
+                    var branchesResult = await UpdateBranches(repo.Repo.name, branch);
                     if (branchesResult.StatusCode != 200)
                     {
                         return branchesResult;
@@ -239,10 +189,9 @@ namespace CodeMetrics.Service
                 return new ContentResult
                 {
                     StatusCode = 200,
-                    Content = $"Added {count} repos \n",
+                    Content = $"Added {newRepos.Count} repos \n",
                     ContentType = "application/json",
                 };
-
             }
             catch (Exception ex)
             {
@@ -257,7 +206,7 @@ namespace CodeMetrics.Service
             }
         }
 
-        public async Task<object> GetAuthorPerformanceAsync(string authorEmail, DateTimeOffset startDate, DateTimeOffset endDate)
+        public async Task<object> GetAuthorPerformanceAsync(string authorName, DateTimeOffset startDate, DateTimeOffset endDate)
         {
             DateTime? currentStartDate = startDate.UtcDateTime;
             DateTime? currentEndDate = endDate.UtcDateTime;
@@ -267,7 +216,7 @@ namespace CodeMetrics.Service
             var fiveWeeksAgo = now.AddDays(-35);
 
             var lastWeekCommitsQuery = _dbContext.Commits
-                .Where(c => c.authorEmail.ToLower() == authorEmail.ToLower()
+                .Where(c => c.authorEmail.ToLower() == authorName.ToLower()
                          && c.CreatedAt >= mounthAgo
                          && c.CreatedAt <= now);
 
@@ -288,7 +237,7 @@ namespace CodeMetrics.Service
             }
 
             var fiveWeeksCommits = await _dbContext.Commits
-                .Where(c => c.authorEmail.ToLower() == authorEmail.ToLower()
+                .Where(c => c.authorEmail.ToLower() == authorName.ToLower()
                          && c.CreatedAt >= fiveWeeksAgo
                          && c.CreatedAt <= now)
                 .ToListAsync();
@@ -351,7 +300,7 @@ namespace CodeMetrics.Service
 
             return new
             {
-                Author = authorEmail,
+                Author = authorName,
                 Speed = new
                 {
                     Commits = commitsCountLastWeek,
@@ -386,112 +335,12 @@ namespace CodeMetrics.Service
             return data[lower] + (data[upper] - data[lower]) * (index - lower);
         }
 
-        public async Task<ContentResult> UpdateDataBase(string? projectKey, string? reposName, string? branch, int limit)
+        public async Task<ContentResult> UpdateDataBase(string? reposName, string? branch, int limit)
         {
             try
             {
-                var projectsResponse = await _client.GetProjects();
-                var projects = JsonConvert.DeserializeObject<ProjectApiResponse>(projectsResponse)?.Data;
-
-                if (projects == null || projects.Length == 0)
-                    return new ContentResult
-                    {
-                        StatusCode = 200,
-                        Content = "No projects to process",
-                        ContentType = "application/json",
-                    };
-
-                var newProjects = new List<Project>();
-                var projectKeysInResp = projects?.Select(c => c.Name).ToList();
-
-                var existingProjectsInDb = await _dbContext.Projects
-                    .Where(c => projectKeysInResp.Contains(c.Name))
-                    .Select(c => c.Name)
-                    .ToHashSetAsync();
-                if (string.IsNullOrEmpty(projectKey))
-                {
-                    foreach (var projectData in projects)
-                    {
-                        if (!existingProjectsInDb.Contains(projectData.Name))
-                        {
-                            var project = new Project()
-                            {
-                                ProjectKey = projectData.Name,
-                                Name = projectData.Name,
-                                Description = projectData.Description,
-                                IsPublic = projectData.IsPublic,
-                                CreatedAt = projectData.CreatedAt,
-                                UpdatedAt = projectData.UpdatedAt
-                            };
-
-                            newProjects.Add(project);
-                        }
-                    }
-                }
-                else
-                {
-                    if (existingProjectsInDb.Contains(projectKey))
-                    {
-                        return new ContentResult
-                        {
-                            StatusCode = 200,
-                            Content = "No projects to process",
-                            ContentType = "application/json",
-                        };
-                    }
-                    else
-                    {
-                        var pr = projects.FirstOrDefault(p => p.Name == projectKey);
-                        var project = new Project()
-                        {
-                            ProjectKey = projectKey,
-                            Name = projectKey,
-                            Description = pr.Description,
-                            IsPublic = pr.IsPublic,
-                            CreatedAt = pr.CreatedAt,
-                            UpdatedAt = pr.UpdatedAt
-                        };
-
-                        newProjects.Add(project);
-                    }
-                }
-
-
-                if (newProjects.Count != 0)
-                {
-                    await _dbContext.Projects.AddRangeAsync(newProjects);
-                    await _dbContext.SaveChangesAsync();
-                    foreach (var pr in newProjects)
-                    {
-                        existingProjectsInDb.Add(pr.Name);
-                    }
-                }
-                if (string.IsNullOrEmpty(projectKey))
-                {
-                    foreach (var project in existingProjectsInDb)
-                    {
-                        var result = await UpdateRepos(project, branch, limit);
-                        if (result.StatusCode != 200)
-                        {
-                            return result;
-                        }
-                    }
-                }
-                else
-                {
-                    var result = await UpdateRepos(projectKey, branch, limit);
-                    if (result.StatusCode != 200)
-                    {
-                        return result;
-                    }
-                }
-
-                return new ContentResult
-                {
-                    StatusCode = 200,
-                    Content = $"Added {newProjects.Count} projects \n",
-                    ContentType = "application/json",
-                };
+                var result = await UpdateRepos(branch, limit);
+                return result;
             }
             catch (Exception ex)
             {
@@ -506,13 +355,13 @@ namespace CodeMetrics.Service
             }
         }
 
-        public async Task<ContentResult> GetProjectCommitsByPeriod(string name, DateTimeOffset startDate, DateTimeOffset endDate)
+        public async Task<ContentResult> GetCommitsByPeriod(DateTimeOffset startDate, DateTimeOffset endDate)
         {
             DateTime? currentStartDate = startDate.UtcDateTime;
             DateTime? currentEndDate = endDate.UtcDateTime;
 
             var project = await _dbContext.Projects
-                .FirstOrDefaultAsync(r => r.Name == name);
+                .FirstOrDefaultAsync(r => r.Name == "Test");
 
             if (project == null)
             {
@@ -544,7 +393,7 @@ namespace CodeMetrics.Service
 
             if (currentStartDate.HasValue)
             {
-                commitsQuery = commitsQuery.Where(c => c.CreatedAt >= currentEndDate.Value);
+                commitsQuery = commitsQuery.Where(c => c.CreatedAt >= currentStartDate.Value);
             }
 
             if (currentEndDate.HasValue)
@@ -562,26 +411,12 @@ namespace CodeMetrics.Service
             };
         }
 
-        public async Task<ContentResult> GetMetricByProject(string name, DateTimeOffset startDate, DateTimeOffset endDate)
+        public async Task<ContentResult> GetMetric(DateTimeOffset startDate, DateTimeOffset endDate)
         {
             DateTime? currentStartDate = startDate.UtcDateTime;
             DateTime? currentEndDate = endDate.UtcDateTime;
 
-            var project = await _dbContext.Projects
-                .FirstOrDefaultAsync(r => r.Name == name);
-
-            if (project == null)
-            {
-                return new ContentResult
-                {
-                    StatusCode = 404,
-                    Content = JsonConvert.SerializeObject(new { error = "Project not found" }),
-                    ContentType = "application/json"
-                };
-            }
-
             var projectRepos = await _dbContext.Repositories
-                .Where(r => r.ProjectKey == project.Name)
                 .ToListAsync();
 
             var repoNames = projectRepos.Select(r => r.RepoName).ToList();
@@ -622,7 +457,7 @@ namespace CodeMetrics.Service
             var totalChangedLines = commitStats.Sum(s => s.AddedLines + s.DeletedLines);
 
             var resultObject = new JObject();
-            resultObject["Project"] = name;
+            resultObject["Project"] = "Test";
             resultObject["Period"] = new JObject
             {
                 ["Start"] = startDate.ToString("yyyy-MM-dd"),
@@ -682,26 +517,19 @@ namespace CodeMetrics.Service
             };
         }
 
-        private async Task<ContentResult> UpdateCommitsFromResponse(string projectKey, string reposKey, string? branch, int limit)
+        private async Task<ContentResult> UpdateCommitsFromResponse(string reposKey)
         {
             try
             {
-                List<CommitData> commitsResponse = [];
-                if (string.IsNullOrEmpty(branch))
+                var commitsResponse = new List<CommitResponse>();
+
+                var res = await _client.GetCommitsAsync(reposKey);
+                if (res != null)
                 {
-                    var branchesResp = JsonConvert.DeserializeObject<BranchApiResponse>(await _client.GetBranches(projectKey, reposKey));
-                    foreach (var br in branchesResp.Data)
-                    {
-                        var commitsFromBranchResp = await _client.GetCommitsAsync(projectKey, reposKey, limit, br.Name);
-                        commitsResponse.AddRange(commitsFromBranchResp.Data);
-                    }
+                    commitsResponse.AddRange(res);
                 }
-                else
-                {
-                    var res = await _client.GetCommitsAsync(projectKey, reposKey, limit);
-                    commitsResponse.AddRange(res.Data);
-                }
-                if (commitsResponse == null || commitsResponse.Count == 0)
+
+                if (commitsResponse.Count == 0)
                 {
                     return new ContentResult
                     {
@@ -710,6 +538,7 @@ namespace CodeMetrics.Service
                         ContentType = "application/json",
                     };
                 }
+
                 var commitHashes = commitsResponse.Select(c => c.hash).ToList();
 
                 var existingHashes = await _dbContext.Commits
@@ -717,92 +546,38 @@ namespace CodeMetrics.Service
                     .Select(c => c.Hash)
                     .ToHashSetAsync();
 
+                var commitStatsHash = await _dbContext.CommitStats
+                    .Select(p => p.CommitHash)
+                    .ToHashSetAsync();
+
                 var newCommits = new List<Commit>();
                 var newStats = new List<CommitStats>();
-                var commitStatsHash = await _dbContext.CommitStats.Select(p => p.CommitHash).ToHashSetAsync();
-
-                var newUsersDict = new Dictionary<string, Entity.User>();
-                var existingUsersCache = new Dictionary<string, Entity.User>();
-                var existingUsersInDb = await _dbContext.Users.ToListAsync();
+                var newUsersDict = new Dictionary<string, Entity.User>(StringComparer.OrdinalIgnoreCase);
+                var existingUsers = await _dbContext.Users
+                    .ToDictionaryAsync(u => u.UserEmail, u => u);
 
                 foreach (var commitData in commitsResponse)
                 {
                     if (existingHashes.Contains(commitData.hash))
                         continue;
 
-                    var committerEmail = commitData.committer?.Email ?? "";
-                    Entity.User? committerUser = null;
-
-                    if (!string.IsNullOrEmpty(committerEmail))
-                    {
-
-                        if (!existingUsersCache.TryGetValue(committerEmail, out committerUser))
-                        {
-                            committerUser = existingUsersInDb.FirstOrDefault(u => u.UserEmail == committerEmail);
-
-                            if (committerUser != null)
-                                existingUsersCache[committerEmail] = committerUser;
-                        }
-
-                        if (committerUser == null && !newUsersDict.ContainsKey(committerEmail))
-                        {
-                            committerUser = new Entity.User()
-                            {
-                                UserEmail = committerEmail,
-                                UserName = commitData.committer?.Name ?? "Unknown"
-                            };
-                            newUsersDict[committerEmail] = committerUser;
-                        }
-                        else
-                            committerUser ??= newUsersDict[committerEmail];
-                    }
-
-                    var authorEmail = commitData.author?.Email ?? "";
-                    Entity.User? authorUser = null;
-
-                    if (!string.IsNullOrEmpty(authorEmail))
-                    {
-                        if (!existingUsersCache.TryGetValue(authorEmail, out authorUser))
-                        {
-                            authorUser = existingUsersInDb.FirstOrDefault(u => u.UserEmail == authorEmail);
-
-                            if (authorUser != null)
-                                existingUsersCache[authorEmail] = authorUser;
-                        }
-
-                        if (authorUser == null && !newUsersDict.ContainsKey(authorEmail))
-                        {
-                            authorUser = new Entity.User()
-                            {
-                                UserEmail = authorEmail,
-                                UserName = commitData.author?.Name ?? "Unknown"
-                            };
-                            newUsersDict[authorEmail] = authorUser;
-                        }
-                        else
-                            authorUser ??= newUsersDict[authorEmail];
-                    }
+                    var committerUser = ResolveUser(commitData.commit.committer?.Email, commitData.commit.committer?.Name);
+                    var authorUser = ResolveUser(commitData.commit.author?.Email, commitData.commit.author?.Name);
 
                     var commit = new Commit
                     {
                         Hash = commitData.hash,
-                        Message = commitData.message,
-                        authorEmail = commitData.author?.Email ?? "unknown@unknown.com",
-                        authorName = commitData.author?.Name ?? "Unknown",
-                        CreatedAt = commitData.created_at.LocalDateTime,
+                        Message = commitData.commit.message,
+                        authorEmail = authorUser?.UserEmail ?? commitData.commit.author?.Email ?? "unknown@unknown.com",
+                        authorName = authorUser?.UserName ?? commitData.commit.author?.Name ?? "Unknown",
+                        CreatedAt = commitData.CreatedAt.UtcDateTime,
                         repoName = reposKey,
-                        committerEmail = commitData.committer?.Email ?? "unknown@unknown.com",
-                        committerName = commitData.committer?.Name ?? "Unknown"
+                        committerEmail = committerUser?.UserEmail ?? commitData.commit.committer?.Email ?? "unknown@unknown.com",
+                        committerName = committerUser?.UserName ?? commitData.commit.committer?.Name ?? "Unknown"
                     };
 
                     newCommits.Add(commit);
-
-                    var commitStats = await GetCommitStats(projectKey, reposKey, commit.Hash);
-
-                    if (commitStats != null && !commitStatsHash.Contains(commitStats.CommitHash))
-                    {
-                        newStats.Add(commitStats);
-                    }
+                    newStats.Add(await GetCommitStats(reposKey, commit.Hash));
                 }
 
                 var newUsersList = newUsersDict.Values.ToList();
@@ -810,18 +585,20 @@ namespace CodeMetrics.Service
                 if (newUsersList.Count != 0)
                 {
                     await _dbContext.Users.AddRangeAsync(newUsersList);
-                    await _dbContext.SaveChangesAsync();
                 }
 
                 if (newStats.Count != 0)
                 {
                     await _dbContext.CommitStats.AddRangeAsync(newStats);
-                    await _dbContext.SaveChangesAsync();
                 }
 
                 if (newCommits.Count != 0)
                 {
                     await _dbContext.Commits.AddRangeAsync(newCommits);
+                }
+
+                if (newUsersList.Count != 0 || newStats.Count != 0 || newCommits.Count != 0)
+                {
                     await _dbContext.SaveChangesAsync();
                 }
 
@@ -831,6 +608,33 @@ namespace CodeMetrics.Service
                     Content = $"Added {newUsersList.Count} users, {newCommits.Count} commits and {newStats.Count} commitStats",
                     ContentType = "application/json",
                 };
+
+                Entity.User ResolveUser(string? email, string? name)
+                {
+                    if (string.IsNullOrWhiteSpace(email))
+                    {
+                        return null;
+                    }
+
+                    if (existingUsers.TryGetValue(email, out var user))
+                    {
+                        return user;
+                    }
+
+                    if (newUsersDict.TryGetValue(email, out user))
+                    {
+                        return user;
+                    }
+
+                    user = new Entity.User
+                    {
+                        UserEmail = email,
+                        UserName = string.IsNullOrWhiteSpace(name) ? "Unknown" : name
+                    };
+
+                    newUsersDict[email] = user;
+                    return user;
+                }
             }
             catch (Exception ex)
             {
@@ -845,7 +649,7 @@ namespace CodeMetrics.Service
             }
         }
 
-        public async Task<ContentResult> GetCommits(string projectKey, string reposKey)
+        public async Task<ContentResult> GetCommits(string reposKey)
         {
             try
             {
@@ -981,7 +785,7 @@ namespace CodeMetrics.Service
             };
         }
 
-        public async Task<ContentResult> GetCommit(string projectKey, string reposKey, string hash)
+        public async Task<ContentResult> GetCommit(string reposKey, string hash)
         {
             try
             {
@@ -1044,41 +848,5 @@ namespace CodeMetrics.Service
             }
         }
 
-        private (int addedLines, int deletedLines, int changedFiles) AnalyzeDiffContent(string diffContent)
-        {
-            int addedLines = 0;
-            int deletedLines = 0;
-            int changedFiles = 0;
-
-            var lines = diffContent.Split('\n');
-            var processedFiles = new HashSet<string>();
-
-            foreach (var line in lines)
-            {
-                if (line.StartsWith("diff --git"))
-                {
-                    var fileMatch = System.Text.RegularExpressions.Regex.Match(line, @"diff --git a/(.+) b/(.+)");
-                    if (fileMatch.Success)
-                    {
-                        var currentFile = fileMatch.Groups[1].Value;
-                        if (!processedFiles.Contains(currentFile))
-                        {
-                            processedFiles.Add(currentFile);
-                            changedFiles++;
-                        }
-                    }
-                }
-                else if (line.StartsWith("+") && !line.StartsWith("+++"))
-                {
-                    addedLines++;
-                }
-                else if (line.StartsWith("-") && !line.StartsWith("---"))
-                {
-                    deletedLines++;
-                }
-            }
-
-            return (addedLines, deletedLines, changedFiles);
-        }
     }
 }

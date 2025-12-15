@@ -44,7 +44,7 @@ namespace CodeMetricsApi.Controllers
         {
             try
             {
-                 return await _service.GetMetricByProject(name, startDate, endDate);
+                 return await _service.GetMetric(startDate, endDate);
             }
             catch (Exception ex)
             {
@@ -57,7 +57,7 @@ namespace CodeMetricsApi.Controllers
         {
             try
             {
-                if (instance.ToString() == "Project") return await _service.GetProjectCommitsByPeriod(name, startDate, endDate);
+                if (instance.ToString() == "Project") return await _service.GetCommitsByPeriod(startDate, endDate);
                 else return await _service.GetRepoCommitsByPeriod(name, startDate, endDate);
             }
             catch (Exception ex)
@@ -71,7 +71,7 @@ namespace CodeMetricsApi.Controllers
         {
             try
             {
-                var response  = await _service.GetCommits(projectKey, repoName);
+                var response  = await _service.GetCommits(repoName);
                 return response;
             }
             catch (Exception ex)
@@ -86,7 +86,7 @@ namespace CodeMetricsApi.Controllers
         {
             try
             {
-                var response = await _service.GetCommit(projectKey, repoName, hash);
+                var response = await _service.GetCommit(repoName, hash);
                 return response;
             }
             catch (Exception ex)
@@ -110,7 +110,7 @@ namespace CodeMetricsApi.Controllers
         {
             try
             {
-                var response = await _service.UpdateDataBase(projectKey, repoName, branch, limit);
+                var response = await _service.UpdateDataBase(repoName, branch, limit);
                 return response;
             }
             catch (Exception ex)

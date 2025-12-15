@@ -1,65 +1,45 @@
-﻿using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
+﻿using CodeMetrics.Models;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion.Internal;
 using Microsoft.Extensions.ObjectPool;
 using Newtonsoft.Json;
 using System.Text.Json.Serialization;
 
 namespace CodeMetricsApi.Models
 {
-    public class CommitApiResponse
+    public class CommitInfo
     {
-        [JsonProperty("status")]
-        public string Status { get; set; } = "";
-
-        [JsonProperty("request_id")]
-        public string RequestId { get; set; } = "";
-
-        [JsonProperty("data")]
-        public List<CommitData> Data { get; set; } = new List<CommitData>();
-    }
-
-
-
-    public class CommitData
-    {
-        public string hash { get; set; } = string.Empty;
+        public string id { get; set; } = string.Empty;
         public string message { get; set; } = string.Empty;
-        public User author { get; set; } = new User();
-        public User committer { get; set; } = new User();
+        public GiteaUser author { get; set; } = null!;
+        public GiteaUser committer { get; set; } = null!;
+        [JsonProperty("timestamp")]
         public DateTimeOffset created_at { get; set; }
     }
 
-    public class User
+    public class CommitResponse
     {
-        [JsonProperty("name")]
-        public string Name { get; set; } = string.Empty;
-        [JsonProperty("email")]
-        public string Email { get; set; } = string.Empty;
+        [JsonProperty("sha")]
+        public string hash { get; set; } = null!;
+
+        [JsonProperty("created")]
+        public DateTimeOffset CreatedAt { get; set; }
+        public List<CommitFiles> files { get; set; }
+        public CommitInfo commit { get; set; } = null!;
+
+        public CommitDiffData stats { get; set; } = null!;
     }
 
-    public class CommitDiffApiResponse
+    public class CommitFiles
     {
-        [JsonProperty("status")]
-        public string Status { get; set; } = "";
-
-        [JsonProperty("request_id")]
-        public string RequestId { get; set; } = "";
-
-        [JsonProperty("data")]
-        public CommitDiffData Data { get; set; } = new CommitDiffData();
+        public string filename { get; set; } = string.Empty;
     }
-
     public class CommitDiffData
     {
-        [JsonProperty("source_head_id")]
-        public string SourceHeadId { get; set; } = string.Empty;
-
-        [JsonProperty("content")]
-        public string Content { get; set; } = string.Empty;
-
-        [JsonProperty("large_files")]
-        public List<string> LargeFiles { get; set; } = [];
-
-        [JsonProperty("excluded_files")]
-        public List<string> ExcludedFiles { get; set; } = [];
+        [JsonProperty("total")]
+        public int TotalChanged { get; set; }
+        [JsonProperty("additions")]
+        public int AddedLines { get; set; }
+        [JsonProperty("deletions")]
+        public int RemovedLines { get; set; }
     }
 }

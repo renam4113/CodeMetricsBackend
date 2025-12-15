@@ -67,8 +67,8 @@ namespace CodeMetrics.Entity
         public int AddedLines { get; set; }
         public int DeletedLines { get; set; }
         public int ChangedFiles { get; set; }
-        public int TotalChanges => AddedLines + DeletedLines;
-        public string CommitHash { get; set; }
+        public int TotalChanges { get; set; }
+        public string CommitHash { get; set; } = null!;
 
     }
 
