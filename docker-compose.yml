@@ -26,3 +26,13 @@ services:
     depends_on:
       - postgres
     restart:  always
+    
+  codemetrics:
+    image: codemetrics:latest
+    container_name: codemetrics
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    volumes:
+      - /srv/study_work/CodeMetrics/CodeMetrics/appsettings.json:/app/appsettings.json:ro
+    ports:
+      - 4000:8080
