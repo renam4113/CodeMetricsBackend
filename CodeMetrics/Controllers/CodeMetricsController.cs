@@ -40,7 +40,7 @@ namespace CodeMetricsApi.Controllers
 
 
         [HttpGet("ProjectMetric")]
-        public async Task<IActionResult> GetProjectMetric([FromQuery] string name, [FromQuery] DateTimeOffset startDate, [FromQuery] DateTimeOffset endDate)
+        public async Task<IActionResult> GetProjectMetric([FromQuery] DateTimeOffset startDate, [FromQuery] DateTimeOffset endDate)
         {
             try
             {
@@ -48,7 +48,7 @@ namespace CodeMetricsApi.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(ex);
             }
         }
 
@@ -57,17 +57,16 @@ namespace CodeMetricsApi.Controllers
         {
             try
             {
-                if (instance.ToString() == "Project") return await _service.GetCommitsByPeriod(startDate, endDate);
-                else return await _service.GetRepoCommitsByPeriod(name, startDate, endDate);
+               return await _service.GetRepoCommitsByPeriod(name, startDate, endDate);
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(ex);
             }
         }
 
         [HttpGet("Commits")]
-        public async Task<IActionResult> GetCommits([FromQuery] string projectKey, [FromQuery] string repoName)
+        public async Task<IActionResult> GetCommits([FromQuery] string repoName)
         {
             try
             {
@@ -76,7 +75,7 @@ namespace CodeMetricsApi.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(ex);
             }
         }
 
@@ -91,7 +90,7 @@ namespace CodeMetricsApi.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(ex);
             }
         }
 
@@ -115,7 +114,7 @@ namespace CodeMetricsApi.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(new { error = ex.Message });
+                return BadRequest(ex);
             }
         }
 

@@ -12,24 +12,10 @@ namespace CodeMetrics.Controllers
         private readonly ICodeMetricsDatabaseService _dbService;
         public CodeMetricsDatabaseController(ICodeMetricsDatabaseService databaseService) => _dbService = databaseService;
 
-        [HttpGet("/projects")]
-        public async Task<IActionResult> GetAllProjects()
-        {
-            var projects = await _dbService.GetAllProjectsAsync();
-            return Ok(projects);
-        }
-
-        [HttpGet("/project/{projectKey}")]
-        public async Task<IActionResult> GetProjectByKey(string projectKey)
-        {
-            var projectByKey = await _dbService.GetProjectByKeyAsync(projectKey);
-            return Ok(projectByKey);
-        }
-
         [HttpGet("/repository/project/{projectKey}")]
-        public async Task<IActionResult> GetRepositoriesByProject(string projectKey)
+        public async Task<IActionResult> GetRepositoriesAsync()
         {
-            var repositoriesByProject = await _dbService.GetRepositoriesByProjectAsync(projectKey);
+            var repositoriesByProject = await _dbService.GetRepositoriesAsync();
             return Ok(repositoriesByProject);
         }
 

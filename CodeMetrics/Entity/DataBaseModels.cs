@@ -1,28 +1,16 @@
-﻿using CodeMetricsApi.Models;
-using System.ComponentModel.DataAnnotations.Schema;
+﻿using System.ComponentModel.DataAnnotations.Schema;
 using System.ComponentModel.DataAnnotations;
 
 namespace CodeMetrics.Entity
 {
-    public class Project
-    {
-        public string ProjectKey { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Description { get; set; } = string.Empty;
-        public bool IsPublic { get; set; }
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
-    }
-
     public class Repository
     {
         public string RepoName { get; set; } = string.Empty;
         public string OwnerName { get; set; } = string.Empty;
         public string DefaultBranch { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset UpdatedAt { get; set; }
         public bool IsFork { get; set; }
-        public string ProjectKey { get; set; }
     }
 
     public class Branch
@@ -45,7 +33,7 @@ namespace CodeMetrics.Entity
         public string Message { get; set; } = string.Empty;
 
         [Column(TypeName = "timestamp with time zone")]
-        public DateTime CreatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
 
         [Column(TypeName = "text")]
         public string authorEmail { get; set; } = string.Empty;

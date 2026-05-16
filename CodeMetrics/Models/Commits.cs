@@ -12,16 +12,16 @@ namespace CodeMetricsApi.Models
         public string message { get; set; } = string.Empty;
         public GiteaUser author { get; set; } = null!;
         public GiteaUser committer { get; set; } = null!;
-        [JsonProperty("timestamp")]
+        [JsonPropertyName("timestamp")]
         public DateTimeOffset created_at { get; set; }
     }
 
     public class CommitResponse
     {
-        [JsonProperty("sha")]
+        [JsonPropertyName("sha")]
         public string hash { get; set; } = null!;
 
-        [JsonProperty("created")]
+        [JsonPropertyName("created")]
         public DateTimeOffset CreatedAt { get; set; }
         public List<CommitFiles> files { get; set; }
         public CommitInfo commit { get; set; } = null!;
@@ -35,11 +35,11 @@ namespace CodeMetricsApi.Models
     }
     public class CommitDiffData
     {
-        [JsonProperty("total")]
+        [JsonPropertyName("total")]
         public int TotalChanged { get; set; }
-        [JsonProperty("additions")]
+        [JsonPropertyName("additions")]
         public int AddedLines { get; set; }
-        [JsonProperty("deletions")]
+        [JsonPropertyName("deletions")]
         public int RemovedLines { get; set; }
     }
 }

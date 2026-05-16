@@ -8,13 +8,6 @@ public class RepositoryConfiguration : IEntityTypeConfiguration<Repository>
     {
         builder.HasKey(r => r.RepoName);
 
-        builder.HasOne<Project>()
-            .WithMany()
-            .HasForeignKey(r => r.ProjectKey)
-            .OnDelete(DeleteBehavior.Cascade);
-
-
-        builder.HasIndex(r => r.ProjectKey);
         builder.HasIndex(r => r.RepoName);
     }
 }
