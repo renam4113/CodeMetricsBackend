@@ -13,23 +13,9 @@ namespace CodeMetrics.Service
             _context = context;
         }
 
-        public async Task<List<Project>> GetAllProjectsAsync()
-        {
-            return await _context.Projects
-                .OrderBy(p => p.Name)
-                .ToListAsync();
-        }
-
-        public async Task<Project?> GetProjectByKeyAsync(string projectKey)
-        {
-            return await _context.Projects
-                .FirstOrDefaultAsync(p => p.ProjectKey == projectKey);
-        }
-
-        public async Task<List<Repository>> GetRepositoriesByProjectAsync(string projectKey)
+        public async Task<List<Repository>> GetRepositoriesAsync()
         {
             return await _context.Repositories
-                .Where(r => r.ProjectKey == projectKey)
                 .OrderBy(r => r.RepoName)
                 .ToListAsync();
         }

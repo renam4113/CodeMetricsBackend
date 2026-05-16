@@ -1,16 +1,17 @@
 ﻿using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace CodeMetrics.Models
 {
     public class GiteaUser
     {
-        [JsonProperty("id")]
+        [JsonPropertyName("id")]
         public long Id { get; set; }
-        [JsonProperty("username")]
+        [JsonPropertyName("username")]
         public string Name { get; set; } = string.Empty;
-        [JsonProperty("email")]
+        [JsonPropertyName("email")]
         public string Email { get; set; } = string.Empty;
-        [JsonProperty("starred_repos_count")]
+        [JsonPropertyName("starred_repos_count")]
         public long CreatingRepos { get; set; }
     }
 }

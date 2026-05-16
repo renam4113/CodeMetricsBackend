@@ -1,12 +1,13 @@
-﻿using CodeMetrics.Entity;
-using CodeMetrics.Clients;
+﻿using CodeMetrics.Clients;
+using CodeMetrics.Context;
+using CodeMetrics.Entity;
+using CodeMetrics.Models;
+using CodeMetricsApi.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using CodeMetrics.Context;
-using CodeMetricsApi.Models;
 using Newtonsoft.Json;
-using CodeMetrics.Models;
 using Newtonsoft.Json.Linq;
+using System.Globalization;
 
 namespace CodeMetrics.Service
 {
@@ -144,7 +145,6 @@ namespace CodeMetrics.Service
                             OwnerName = "Test", // дописать
                             CreatedAt = repo.CreatedAt,
                             UpdatedAt = repo.UpdatedAt,
-                            ProjectKey = "Test",
                             DefaultBranch = repo.DefaultBranch,
                             IsFork = true, // дописать
                         });
@@ -348,21 +348,7 @@ namespace CodeMetrics.Service
             DateTime? currentStartDate = startDate.UtcDateTime;
             DateTime? currentEndDate = endDate.UtcDateTime;
 
-            var project = await _dbContext.Projects
-                .FirstOrDefaultAsync(r => r.Name == "Test");
-
-            if (project == null)
-            {
-                return new ContentResult
-                {
-                    StatusCode = 404,
-                    Content = JsonConvert.SerializeObject(new { error = "Project not found" }),
-                    ContentType = "application/json"
-                };
-            }
-
             var repoNames = await _dbContext.Repositories
-                .Where(r => r.ProjectKey == project.Name)
                 .Select(r => r.RepoName)
                 .ToListAsync();
 
@@ -722,7 +708,7 @@ namespace CodeMetrics.Service
                 .ToListAsync();
 
             var weekly = commits
-                .GroupBy(c => new { Year = c.CreatedAt.Year, Week = System.Globalization.ISOWeek.GetWeekOfYear(c.CreatedAt) })
+                .GroupBy(c => new { Year = c.CreatedAt.Year, Week = ISOWeek.GetWeekOfYear(c.CreatedAt.LocalDateTime) })
                 .Select(g =>
                 {
                     int year = g.Key.Year;

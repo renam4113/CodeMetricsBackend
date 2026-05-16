@@ -1,13 +1,14 @@
 ﻿using CodeMetricsApi.Models;
 using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace CodeMetrics.Models
 {
     public class BranchesResponse
     {
-        [JsonProperty("name")]
+        [JsonPropertyName("name")]
         public string Name { get; set; } = string.Empty;
-        [JsonProperty("commit")]
+        [JsonPropertyName("commit")]
         public CommitInfo LastCommit { get; set; } = null!;
     }
 }

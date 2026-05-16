@@ -14,7 +14,7 @@
         public string Message { get; set; } = string.Empty;
         public string authorEmail { get; set; } = string.Empty;
         public string authorName { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
         public string repoName { get; set; } = string.Empty;
         public string committerEmail { get; set; } = string.Empty;
         public string committerName { get; set; } = string.Empty;

@@ -1,50 +1,47 @@
 ﻿using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 namespace CodeMetrics.Models
 {
     public class RepositoryApiResponse
     {
-        [JsonProperty("ok")]
+        [JsonPropertyName("ok")]
         public bool Ok { get; set; }
 
-        [JsonProperty("data")]
+        [JsonPropertyName("data")]
         public List<RepositoryInfo> Data { get; set; }
     }
 
     public class RepositoryInfo
     {
-        [JsonProperty("id")]
+        [JsonPropertyName("id")]
         public long Id { get; set; }
 
-        [JsonProperty("owner")]
-        public GiteaUser Owner { get; set; }  // переименовать Creater в Owner
+        [JsonPropertyName("owner")]
+        public GiteaUser Owner { get; set; }  
 
-        [JsonProperty("name")]
+        [JsonPropertyName("name")]
         public string Name { get; set; } = null!;
 
-        [JsonProperty("full_name")]
+        [JsonPropertyName("full_name")]
         public string FullName { get; set; } = null!;
 
-        [JsonProperty("description")]
+        [JsonPropertyName("description")]
         public string Description { get; set; } = string.Empty;
 
-        [JsonProperty("created_at")]
-        public DateTime CreatedAt { get; set; }
+        [JsonPropertyName("created_at")]
+        public DateTimeOffset CreatedAt { get; set; }
 
-        [JsonProperty("updated_at")]
-        public DateTime UpdatedAt { get; set; }
+        [JsonPropertyName("updated_at")]
+        public DateTimeOffset UpdatedAt { get; set; }
 
-        [JsonProperty("default_branch")]
+        [JsonPropertyName("default_branch")]
         public string DefaultBranch { get; set; } = string.Empty;
 
-        [JsonProperty("size")]
+        [JsonPropertyName("size")]
         public long Size { get; set; }
 
-        [JsonProperty("language")]
+        [JsonPropertyName("language")]
         public string Language { get; set; } = string.Empty;
-
-        // Можно добавить другие нужные поля
     }
-
-    // Удалить класс RepoResponse или использовать его для чего-то другого
 }
