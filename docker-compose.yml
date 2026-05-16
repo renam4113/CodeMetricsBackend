@@ -1,38 +1,67 @@
-version: '3.8'
-services:
-  postgres:
-    image: postgres:10
-    ports:
-      - 5434:5432
-    volumes:
-      - ./storage/postgresql-data:/var/lib/postgresql/data
-      - ./storage/files:/var/lib/postgresql/files
-    environment:
-      POSTGRES_PASSWORD: "LFYSGY0UpphAliOEgqpv"
-      POSTGRES_DB: "filedb"
-      PGDATA: "/var/lib/postgresql/data"
-    restart: always
+# Запуск: скопируйте .env.example → .env, затем:
+#   docker compose up -d --build
+#
+# API:     http://localhost:8080/swagger
+# Ollama:  http://localhost:11434
 
-  pdadmin:
-    image: dpage/pgadmin4:7.8
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: codemetrics-ollama
+    restart: unless-stopped
     ports:
-      - 8081:80
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
     environment:
-      PGADMIN_DEFAULT_EMAIL: "example@mail.com"
-      PGADMIN_DEFAULT_PASSWORD: "admin"
-      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "False"
-      PGADMIN_CONFIG_LOGIN_BANNER: "False"
-      PGADMIN_CONFIG_CONSOLE_LOG_LEVEL: 10
+      OLLAMA_HOST: 0.0.0.0:11434
+      OLLAMA_KEEP_ALIVE: 24h
+      OLLAMA_NUM_CTX: "2048"
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  # Однократная загрузка модели (первый запуск может занять несколько минут)
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: codemetrics-ollama-init
     depends_on:
-      - postgres
-    restart:  always
-    
-  codemetrics:
-    image: codemetrics:latest
-    container_name: codemetrics
+      ollama:
+        condition: service_healthy
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "echo Pulling phi3:mini... && ollama pull phi3:mini && echo Model ready."]
+    restart: "no"
+
+  backend:
+    build:
+      context: ./CodeMetrics
+      dockerfile: Dockerfile
+    container_name: codemetrics-backend
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-    volumes:
-      - /srv/study_work/CodeMetrics/CodeMetrics/appsettings.json:/app/appsettings.json:ro
-    ports:
-      - 4000:8080
+      ASPNETCORE_URLS: http://+:8080
+      Ollama__BaseUrl: http://ollama:11434
+      Ollama__Model: ${OLLAMA_MODEL:-phi3:mini}
+      Ollama__Analysis__NumPredict: "280"
+      Ollama__Analysis__NumCtx: "2048"
+      Ollama__Quick__NumPredict: "180"
+      Ollama__Quick__NumCtx: "1536"
+      ConnectionStrings__Default: ${DATABASE_CONNECTION_STRING}
+      Gitea__BaseUrl: ${GITEA_BASE_URL:-http://195.208.118.188:3000/api/v1}
+      Gitea__AccessToken: ${GITEA_ACCESS_TOKEN}
+      Gitea__Owner: ${GITEA_OWNER:-renam}
+    depends_on:
+      ollama:
+        condition: service_healthy
+      ollama-init:
+        condition: service_completed_successfully
+
+volumes:
+  ollama_data:
