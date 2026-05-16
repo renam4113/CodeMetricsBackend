@@ -1,8 +1,10 @@
-using Microsoft.EntityFrameworkCore;
-using CodeMetrics.Context;
-using CodeMetrics.Service;
+using CodeMetrics.Application.Contracts;
 using CodeMetrics.Clients;
+using CodeMetrics.Context;
+using CodeMetrics.Infrastructure.Ollama;
 using CodeMetrics.Options;
+using CodeMetrics.Services;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,21 +18,33 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Services.AddScoped<ICodeMetricsService, CodeMetricsService>();
-builder.Services.AddScoped<ICodeMetricsDatabaseService, CodeMetricsDatabaseService>();
 builder.Configuration.AddJsonFile("appsettings.json");
 
-var options = builder.Configuration.GetSection("Gitea").Get<GiteaOptions>();
-builder.Services.AddSingleton(options);
+builder.Services.Configure<OllamaOptions>(builder.Configuration.GetSection(OllamaOptions.SectionName));
+
+builder.Services.AddScoped<ICodeMetricsService, CodeMetricsService>();
+builder.Services.AddScoped<ICodeMetricsDatabaseService, CodeMetricsDatabaseService>();
+builder.Services.AddSingleton<IOllamaService, OllamaService>();
+
+var giteaOptions = builder.Configuration.GetSection("Gitea").Get<GiteaOptions>()
+    ?? throw new InvalidOperationException("Gitea configuration section is missing.");
+builder.Services.AddSingleton(giteaOptions);
 builder.Services.AddHttpClient<GiteaClient>();
+
+var ollamaBaseUrl = builder.Configuration["Ollama:BaseUrl"] ?? "http://localhost:11434";
+builder.Services.AddHttpClient("Ollama", client =>
+{
+    client.BaseAddress = new Uri(ollamaBaseUrl);
+    client.Timeout = TimeSpan.FromMinutes(6);
+});
+
+var connectionString = builder.Configuration.GetConnectionString("Default")
+    ?? throw new InvalidOperationException("Connection string 'Default' is not configured.");
 
 builder.Services.AddDbContext<CodeMetricsDbContext>(options =>
 {
-    options
-    .LogTo(Console.WriteLine)
-    .UseNpgsql("Username=postgres;Password=LFYSGY0UpphAliOEgqpv;Host=195.208.118.188;Port=5434;Database=filedb;");
+    options.LogTo(Console.WriteLine).UseNpgsql(connectionString);
 });
-
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -47,7 +61,6 @@ if (app.Environment.IsDevelopment())
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<CodeMetricsDbContext>();
-    //await dbContext.Database.EnsureDeletedAsync();
     await dbContext.Database.EnsureCreatedAsync();
 }
 
