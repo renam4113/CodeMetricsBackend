@@ -1,0 +1,33 @@
+name: CI for develop
+
+on:
+  push:
+    branches:
+      - develop
+pull_request:            # если нужен запуск при PR в develop
+     branches:
+       - develop
+
+jobs:
+  build:
+    runs-on: ubuntu-latest   # или gitea, если используется собственный runner
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Show commit info
+        run: |
+          echo "Push detected in develop branch"
+          echo "Commit: ${{ github.sha }}"
+          echo "Message: ${{ github.event.head_commit.message }}"
+
+      # - name: Setup .NET (пример для вашего проекта CompositeLong)
+      #   uses: actions/setup-dotnet@v4
+      #   with:
+      #     dotnet-version: '8.0.x'
+
+      # - name: Build and test
+      #   run: |
+      #     dotnet build
+      #     dotnet test
