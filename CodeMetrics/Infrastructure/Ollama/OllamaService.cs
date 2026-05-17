@@ -3,6 +3,7 @@ using System.Text.Json;
 using CodeMetrics.Application.Contracts;
 using CodeMetrics.Application.DTOs.Analytics;
 using CodeMetrics.Application.DTOs.Ollama;
+using CodeMetrics.Application.DTOs.SonarQube;
 using Microsoft.Extensions.Options;
 
 namespace CodeMetrics.Infrastructure.Ollama;
@@ -18,24 +19,32 @@ public sealed class OllamaService : IOllamaService
         _options = options.Value;
     }
 
-    public Task<string> AskAsync(string question, CancellationToken cancellationToken = default) =>
-        GenerateAsync(question, OllamaInferenceOptions.FromProfile(_options.Quick), cancellationToken);
+    public Task<string> AskAsync(string question, string? context = null, CancellationToken cancellationToken = default)
+    {
+        var prompt = BuildAskPrompt(question, context);
+        return GenerateAsync(prompt, OllamaInferenceOptions.FromProfile(_options.Quick), cancellationToken);
+    }
 
     public Task<string> ChatAsync(string message, CancellationToken cancellationToken = default) =>
-        AskAsync(message, cancellationToken);
+        AskAsync(message, cancellationToken: cancellationToken);
 
     public Task<string> AnalyzeAuthorPerformanceAsync(
         string authorEmail,
         AuthorSummaryDto summary,
         AuthorPerformanceDto performance,
         ProjectMetricsDto projectMetrics,
+        SonarScanSummaryDto? sonarScan = null,
         string? additionalContext = null,
         CancellationToken cancellationToken = default)
     {
         var compactMetrics = PerformanceMetricsCompactor.BuildCompactPayload(
             authorEmail, summary, performance, projectMetrics);
 
-        var prompt = BuildAnalysisPrompt(authorEmail, compactMetrics, additionalContext);
+        var sonarBlock = sonarScan is null
+            ? string.Empty
+            : "\n" + SonarQubeMetricsCompactor.BuildCompactPayload(sonarScan);
+
+        var prompt = BuildAnalysisPrompt(authorEmail, compactMetrics + sonarBlock, additionalContext);
 
         return GenerateAsync(
             prompt,
@@ -124,6 +133,23 @@ public sealed class OllamaService : IOllamaService
         return doc.RootElement.GetProperty("response").GetString() ?? string.Empty;
     }
 
+    private static string BuildAskPrompt(string question, string? context)
+    {
+        if (string.IsNullOrWhiteSpace(context))
+            return question.Trim();
+
+        return $"""
+            Ответьте на вопрос пользователя на русском языке, обращаясь на «Вы».
+            Используйте приведённые данные как контекст, если они относятся к вопросу.
+
+            Контекст:
+            {context.Trim()}
+
+            Вопрос:
+            {question.Trim()}
+            """;
+    }
+
     private static string BuildAnalysisPrompt(
         string authorEmail,
         string compactMetrics,
@@ -131,11 +157,17 @@ public sealed class OllamaService : IOllamaService
     {
         var contextBlock = string.IsNullOrWhiteSpace(additionalContext)
             ? string.Empty
-            : $"\nКонтекст: {additionalContext.Trim()}";
+            : $"\nДополнительный контекст: {additionalContext.Trim()}";
 
         return $"""
-            Ты наставник разработчиков. По метрикам Gitea напиши на русском 2 коротких абзаца (без markdown и списков).
-            Хорошие показатели — похвали. Слабые — 1–2 конкретных совета. Только факты из данных. Обращайся на «вы».
+            Вы — наставник разработчиков. Составьте отчёт на русском языке (2–4 абзаца, без markdown и списков).
+            Обращайтесь к читателю на «Вы».
+
+            Проанализируйте метрики Gitea и результаты сканирования SonarQube (если есть в данных).
+            - При хороших показателях — отметьте сильные стороны.
+            - При любых проблемах (даже если остальное хорошо) — обязательно дайте конкретную обратную связь: что исправить.
+            - Укажите приоритетные действия по качеству кода, покрытию, багам и code smells.
+            Опирайтесь только на факты из данных ниже.
 
             Автор: {authorEmail}
             {compactMetrics}{contextBlock}

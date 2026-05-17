@@ -84,6 +84,6 @@ public class CodeMetricsController : ControllerBase
         if (result.Success)
             return Ok(result.Value);
 
-        return StatusCode(result.StatusCode, new ErrorResponseDto(result.Error ?? "Unknown error"));
+        return StatusCode(result.StatusCode, new { error = result.Error ?? "Unknown error" });
     }
 }
