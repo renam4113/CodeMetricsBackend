@@ -1,33 +1,48 @@
-name: CI for develop
-
 on:
   push:
     branches:
       - develop
-pull_request:            # если нужен запуск при PR в develop
-     branches:
-       - develop
+  pull_request:
+      types: [opened, synchronize, reopened]
 
+name: SonarQube Scan
 jobs:
-  build:
-    runs-on: ubuntu-latest   # или gitea, если используется собственный runner
+  sonarqube:
+    name: SonarQube Scan
+    runs-on: ubuntu-latest
+    container: mcr.microsoft.com/dotnet/sdk:8.0   # Node + git уже есть
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Wait for 10 seconds
+        run: sleep 10
 
-      - name: Show commit info
+      
+      - name: Clone repository
         run: |
-          echo "Push detected in develop branch"
-          echo "Commit: ${{ github.sha }}"
-          echo "Message: ${{ github.event.head_commit.message }}"
+          git clone http://x-access-token:fa4f3ddfe5dae5d82e362376cc1a6762475d99af@gitea:3000/admin/CodeMetricsBackend.git .
+          git checkout ${{ github.sha }}
+      
+      - name: Install SonarScanner for .NET
+        run: |
+            dotnet tool install --global dotnet-sonarscanner
 
-      # - name: Setup .NET (пример для вашего проекта CompositeLong)
-      #   uses: actions/setup-dotnet@v4
-      #   with:
-      #     dotnet-version: '8.0.x'
+      
+      - name: Begin SonarScanner
+        run: |
+          export PATH="$PATH:/root/.dotnet/tools"
+          dotnet sonarscanner begin \
+            /k:"renam" \
+            /d:sonar.token="${{ secrets.SONAR_TOKEN }}" \
+            /d:sonar.host.url="http://sonarqube:9000"
 
-      # - name: Build and test
-      #   run: |
-      #     dotnet build
-      #     dotnet test
+      - name: Build project
+        run: |
+            echo "Workspace: $GITHUB_WORKSPACE"
+            ls -la $GITHUB_WORKSPACE
+            export PATH="$PATH:/root/.dotnet/tools"
+            dotnet build
+
+      - name: End SonarScanner (upload results)
+        run: |
+            export PATH="$PATH:/root/.dotnet/tools"
+            dotnet sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
