@@ -6,6 +6,11 @@ namespace CodeMetrics.Application.DTOs.Ollama;
 public sealed class OllamaTextRequestDto
 {
     public string Text { get; init; } = string.Empty;
+    public string? SonarProjectKey { get; init; }
+    public string? SonarBranch { get; init; }
+    public string? MetricsAuthorEmail { get; init; }
+    public DateTimeOffset? MetricsStartDate { get; init; }
+    public DateTimeOffset? MetricsEndDate { get; init; }
 }
 
 public sealed class OllamaTextResponseDto
@@ -19,6 +24,8 @@ public sealed class PerformanceAnalysisRequestDto
     public DateTimeOffset StartDate { get; init; }
     public DateTimeOffset EndDate { get; init; }
     public string? Context { get; init; }
+    public string? SonarProjectKey { get; init; }
+    public string? SonarBranch { get; init; }
 }
 
 public sealed class PerformanceAnalysisMetricsDto
