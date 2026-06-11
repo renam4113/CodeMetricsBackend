@@ -1,10 +1,7 @@
-# Запуск: скопируйте .env.example → .env, затем:
-#   docker compose up -d --build
-#
-# API:     http://localhost:8080/swagger
-# Ollama:  http://localhost:11434
+version: '3'
 
 services:
+  # ========== Ollama и инициализация модели ==========
   ollama:
     image: ollama/ollama:latest
     container_name: codemetrics-ollama
@@ -23,8 +20,9 @@ services:
       timeout: 10s
       retries: 10
       start_period: 30s
+    networks:
+      - dev-network
 
-  # Однократная загрузка модели (первый запуск может занять несколько минут)
   ollama-init:
     image: ollama/ollama:latest
     container_name: codemetrics-ollama-init
@@ -33,9 +31,106 @@ services:
         condition: service_healthy
     environment:
       OLLAMA_HOST: http://ollama:11434
-    entrypoint: ["/bin/sh", "-c", "echo Pulling phi3:mini... && ollama pull phi3:mini && echo Model ready."]
+    entrypoint: ["/bin/sh", "-c", "echo Pulling ${OLLAMA_MODEL:-phi3:mini}... && ollama pull ${OLLAMA_MODEL:-phi3:mini} && echo Model ready."]
     restart: "no"
+    networks:
+      - dev-network
 
+  # ========== Gitea и его база ==========
+  gitea-db:
+    image: postgres:15
+    container_name: gitea-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: gitea
+      POSTGRES_PASSWORD: gitea
+      POSTGRES_DB: gitea
+    volumes:
+      - ./postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gitea"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dev-network
+
+  gitea:
+    image: gitea/gitea:latest
+    container_name: gitea
+    restart: always
+    depends_on:
+      gitea-db:
+        condition: service_healthy
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: gitea-db:5432
+      GITEA__database__NAME: gitea
+      GITEA__database__USER: gitea
+      GITEA__database__PASSWD: gitea
+    volumes:
+      - ./gitea-data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+      - "2222:22"
+    networks:
+      - dev-network
+
+  runner:
+    image: gitea/act_runner:latest
+    container_name: gitea-runner
+    restart: unless-stopped
+    depends_on:
+      - gitea
+    environment:
+      GITEA_INSTANCE_URL: http://gitea:3000
+      GITEA_RUNNER_REGISTRATION_TOKEN: N5Q5K83UIFgcMvunOkn6nSdmmHNA1oadmbIzPicC
+      GITEA_RUNNER_NAME: my-runner
+      GITEA_RUNNER_LABELS: ubuntu-latest:docker://ubuntu:24.04
+    volumes:
+      - runner_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./runner-config.yaml:/config.yaml
+    command: ["daemon", "--container-network", "dev-network"]
+    networks:
+      - dev-network
+
+  # ========== SonarQube и его база ==========
+  sonarqube-db:
+    image: postgres:12
+    container_name: sonarqube-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: sonar
+      POSTGRES_DB: sonar
+    volumes:
+      - sonarqube_postgresql_data:/var/lib/postgresql/data
+    networks:
+      - dev-network
+
+  sonarqube:
+    image: sonarqube:community
+    depends_on:
+      - sonarqube-db
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonarqube-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: sonar
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    ports:
+      - "9000:9000"
+    networks:
+      - dev-network
+
+  # ========== Бэкенд (CodeMetrics) ==========
   backend:
     build:
       context: ./CodeMetrics
@@ -43,7 +138,7 @@ services:
     container_name: codemetrics-backend
     restart: unless-stopped
     ports:
-      - "8080:8080"
+      - "8080:8080"                     # хост:контейнер
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:8080
@@ -55,13 +150,26 @@ services:
       Ollama__Quick__NumCtx: "1536"
       ConnectionStrings__Default: ${DATABASE_CONNECTION_STRING}
       Gitea__BaseUrl: ${GITEA_BASE_URL:-http://195.208.118.188:3000/api/v1}
-      Gitea__AccessToken: ${GITEA_ACCESS_TOKEN}
-      Gitea__Owner: ${GITEA_OWNER:-renam}
+      Gitea__AccessToken: cdcb6a5584aa168b8817e62410fd603fc31e7ec5
+      Gitea__Owner: renam
     depends_on:
       ollama:
         condition: service_healthy
       ollama-init:
         condition: service_completed_successfully
+    networks:
+      - dev-network
 
+# ========== Тома ==========
 volumes:
   ollama_data:
+  runner_data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
+  sonarqube_postgresql_data:
+
+# ========== Сеть ==========
+networks:
+  dev-network:
+    driver: bridge

@@ -30,7 +30,6 @@ builder.Services.Configure<SonarQubeSettings>(builder.Configuration.GetSection("
 builder.Services.AddHttpClient<ISonarQubeService, SonarQubeService>();
 
 // ??? ???? ?? ??????????? IHttpClientFactory:
-// builder.Services.AddScoped<ISonarQubeService, SonarQubeService>();
 
 builder.Services.AddScoped<ICodeMetricsService, CodeMetricsService>();
 builder.Services.AddScoped<ICodeMetricsDatabaseService, CodeMetricsDatabaseService>();

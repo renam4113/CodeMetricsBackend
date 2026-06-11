@@ -1,0 +1,183 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ClassDiagram MajorVersion="1" MinorVersion="1">
+  <Class Name="CodeMetrics.Application.Common.PeriodDto" Collapsed="true">
+    <Position X="11.25" Y="0.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAIAAAAAACAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Application\Common\PeriodDto.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Application.Common.ServiceResult&lt;T&gt;" Collapsed="true">
+    <Position X="13" Y="0.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAQAAAAAAAAgAAgAAAAAAIAAhAAAAAAA=</HashCode>
+      <FileName>Application\Common\ServiceResult.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Application.Common.StatusCodes" Collapsed="true">
+    <Position X="10.25" Y="1.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAABBAAAAAAAAAAAAAAAAAAAAAAAAQAAAQAAAAAAAAA=</HashCode>
+      <FileName>Application\Common\ServiceResult.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Controllers.CodeMetricsController">
+    <Position X="0.5" Y="0.75" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAABAAAAACAQFAACAAAAAAAQAAAAAAAAAIAIAAAAAA=</HashCode>
+      <FileName>Controllers\CodeMetricsController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Controllers.CodeMetricsDatabaseController">
+    <Position X="2.75" Y="0.75" Width="2.5" />
+    <TypeIdentifier>
+      <HashCode>AAgCAAAAAAAAAAAAAAAAAAAAAAAAAAUIEAgAIAAAAAA=</HashCode>
+      <FileName>Controllers\CodeMetricsDataBaseController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Controllers.SonarQubeController">
+    <Position X="5.5" Y="0.75" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAEAAAEQAAAAAACAAAAAAAAAAFAAAAAAAAAAA=</HashCode>
+      <FileName>Controllers\SonarQubeController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Application.Contracts.SonarQubeService" BaseTypeListCollapsed="true">
+    <Position X="8.5" Y="7" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AABgAAAAAACAAAAAgBAAAAAAIAAACAIEAAQACAIQAAA=</HashCode>
+      <FileName>Application\Contracts\SonarQubeService.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.625" Collapsed="true" />
+  </Class>
+  <Class Name="CodeMetrics.Services.CodeMetricsDatabaseService">
+    <Position X="2.75" Y="7.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAABAAAABAAAAAAAAACAgAAAACBAkAAAAA=</HashCode>
+      <FileName>Services\CodeMetricsDatabaseService.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="CodeMetrics.Services.CodeMetricsService">
+    <Position X="5.25" Y="6.75" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAJAIAACAQAAAAAFAAAAAAIAAAAgBAACBBAAAIAAAA=</HashCode>
+      <FileName>Services\CodeMetricsService.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="CodeMetrics.Entity.Repository">
+    <Position X="16.5" Y="4.25" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAACAAEACAAAAAAAgAAAAAAABAAAAAAgAA=</HashCode>
+      <FileName>Entity\DataBaseModels.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Entity.Branch">
+    <Position X="14.75" Y="4.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAgAAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAACAAA=</HashCode>
+      <FileName>Entity\DataBaseModels.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Entity.Commit">
+    <Position X="14.75" Y="1.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAACAAIABAAAACBAAAgAAAAAEAAAAAAAIAAAAAA=</HashCode>
+      <FileName>Entity\DataBaseModels.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Entity.CommitStats">
+    <Position X="16.5" Y="1.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAACAAAiAAAAAAAAAAAAAAAAMAAAAAAA=</HashCode>
+      <FileName>Entity\DataBaseModels.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Entity.User">
+    <Position X="18.25" Y="3.5" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAACAAAAAA=</HashCode>
+      <FileName>Entity\DataBaseModels.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Controllers.OlamaController">
+    <Position X="8" Y="0.75" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAEAAAACAACAAAAAACAAAAAAAQAggABAAAAAAAAA=</HashCode>
+      <FileName>Controllers\OlamaController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Infrastructure.Ollama.OllamaService">
+    <Position X="11" Y="7.25" Width="2.5" />
+    <TypeIdentifier>
+      <HashCode>AAiAAAACAQAAAgAAAEAAAAAAgAAAAAAAIBAAAAAAAAA=</HashCode>
+      <FileName>Infrastructure\Ollama\OllamaService.cs</FileName>
+    </TypeIdentifier>
+    <Lollipop Position="0.2" />
+  </Class>
+  <Class Name="CodeMetrics.Controllers.ScanRequest">
+    <Position X="12.5" Y="3.5" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAACAAAAAAACAAAAAAAAAAgAAAACAAAAAAA=</HashCode>
+      <FileName>Controllers\SonarQubeController.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Application.DTOs.SonarQube.Condition">
+    <Position X="18.25" Y="5" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAgAAEAAAAAAAAACAAAAAAAIAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Application\DTOs\SonarQube\SonarQubeDtos.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Application.DTOs.SonarQube.IssueTextRange">
+    <Position X="20.25" Y="1.75" Width="1.75" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAQAAAAAAAAAAAAIAAAEAAABAAAAAA=</HashCode>
+      <FileName>Application\DTOs\SonarQube\SonarQubeDtos.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Application.DTOs.SonarQube.SonarMeasuresResult">
+    <Position X="18.25" Y="1.75" Width="1.5" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAAAAAAAQAABAAAAAAAAAAAAAAAAA=</HashCode>
+      <FileName>Application\DTOs\SonarQube\SonarQubeDtos.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Class Name="CodeMetrics.Application.DTOs.SonarQube.SonarScanSummaryDto">
+    <Position X="20.75" Y="4.5" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAACAAAABAACAAAAABAAAAgAAAAACAAAAAA=</HashCode>
+      <FileName>Application\DTOs\SonarQube\SonarQubeDtos.cs</FileName>
+    </TypeIdentifier>
+  </Class>
+  <Interface Name="CodeMetrics.Application.Contracts.ICodeMetricsDatabaseService">
+    <Position X="2.75" Y="4.75" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAAAAAAAAABAAAAAAAAACAgAAAACBAkAAAAA=</HashCode>
+      <FileName>Application\Contracts\ICodeMetricsDatabaseService.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="CodeMetrics.Application.Contracts.ICodeMetricsService">
+    <Position X="5.25" Y="4" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAAIAIAACAQAAAAAEAAAAAAIAAAAgAAAAABAAAAAAAA=</HashCode>
+      <FileName>Application\Contracts\ICodeMetricsService.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="CodeMetrics.Application.Contracts.IOllamaService">
+    <Position X="14.5" Y="7.25" Width="2" />
+    <TypeIdentifier>
+      <HashCode>AAgAAAAAAAAAAgAAAAAAAAAAgAAAAAAAABAAAAAAAAA=</HashCode>
+      <FileName>Application\Contracts\IOllamaService.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Interface Name="CodeMetrics.Application.Contracts.ISonarQubeService">
+    <Position X="8.5" Y="4.25" Width="2.25" />
+    <TypeIdentifier>
+      <HashCode>AAAAAAAAAACAAAAAAAAAAAAAAAAACAIEAAAACAIAAAA=</HashCode>
+      <FileName>Application\Contracts\ISonarQubeService.cs</FileName>
+    </TypeIdentifier>
+  </Interface>
+  <Font Name="Segoe UI" Size="9" />
+</ClassDiagram>
