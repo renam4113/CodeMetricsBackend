@@ -13,20 +13,27 @@ public class SonarQubeService : ISonarQubeService
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private readonly HttpClient _httpClient;
-    private readonly SonarQubeSettings _settings;
+    private readonly IOptionsMonitor<SonarQubeSettings> _settingsMonitor;
     private readonly ILogger<SonarQubeService> _logger;
 
     public SonarQubeService(
-        IHttpClientFactory httpClientFactory,
-        IOptions<SonarQubeSettings> settings,
+        HttpClient httpClient,
+        IOptionsMonitor<SonarQubeSettings> settingsMonitor,
         ILogger<SonarQubeService> logger)
     {
-        _settings = settings.Value;
+        _httpClient = httpClient;
+        _settingsMonitor = settingsMonitor;
         _logger = logger;
-        _httpClient = httpClientFactory.CreateClient();
-        _httpClient.BaseAddress = new Uri(_settings.BaseUrl.TrimEnd('/') + "/");
+    }
+
+    private SonarQubeSettings Settings => _settingsMonitor.CurrentValue;
+
+    private void ApplyAuthHeader()
+    {
         _httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", _settings.Token);
+            string.IsNullOrWhiteSpace(Settings.Token)
+                ? null
+                : new AuthenticationHeaderValue("Bearer", Settings.Token);
     }
 
     public async Task<SonarQualityGateResult?> GetQualityGateAsync(string projectKey, string? branch = null)
@@ -155,8 +162,8 @@ public class SonarQubeService : ISonarQubeService
             {
                 $"-Dsonar.projectKey={projectKey}",
                 "-Dsonar.sources=.",
-                $"-Dsonar.host.url={_settings.BaseUrl}",
-                $"-Dsonar.token={_settings.Token}"
+                $"-Dsonar.host.url={Settings.BaseUrl}",
+                $"-Dsonar.token={Settings.Token}"
             };
 
             if (!string.IsNullOrEmpty(branch))
@@ -168,7 +175,7 @@ public class SonarQubeService : ISonarQubeService
 
             var processInfo = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = _settings.ScannerPath,
+                FileName = Settings.ScannerPath,
                 Arguments = string.Join(" ", args),
                 WorkingDirectory = projectPath,
                 RedirectStandardOutput = true,
@@ -201,7 +208,9 @@ public class SonarQubeService : ISonarQubeService
 
     private async Task<HttpResponseMessage> SendAsync(Func<Task<HttpResponseMessage>> requestFactory)
     {
-        if (string.IsNullOrWhiteSpace(_settings.Token))
+        ApplyAuthHeader();
+
+        if (string.IsNullOrWhiteSpace(Settings.Token))
             throw new SonarQubeUnauthorizedException("Токен SonarQube отсутствует или не настроен");
 
         var response = await requestFactory();

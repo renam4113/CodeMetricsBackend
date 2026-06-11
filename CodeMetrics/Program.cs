@@ -3,6 +3,7 @@ using CodeMetrics.Clients;
 using CodeMetrics.Context;
 using CodeMetrics.Infrastructure.Filters;
 using CodeMetrics.Infrastructure.Ollama;
+using CodeMetrics.Infrastructure.SonarQube;
 using CodeMetrics.Models;
 using CodeMetrics.Options;
 using CodeMetrics.Services;
@@ -20,21 +21,21 @@ builder.Services.AddCors(options =>
     });
 });
 
-builder.Configuration.AddJsonFile("appsettings.json");
+builder.Configuration.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
 builder.Services.Configure<OllamaOptions>(builder.Configuration.GetSection(OllamaOptions.SectionName));
-
-
 builder.Services.Configure<SonarQubeSettings>(builder.Configuration.GetSection("SonarQube"));
 
-builder.Services.AddHttpClient<ISonarQubeService, SonarQubeService>();
-
-// ??? ???? ?? ??????????? IHttpClientFactory:
+builder.Services.AddHttpClient<ISonarQubeService, SonarQubeService>((sp, client) =>
+{
+    var settings = sp.GetRequiredService<Microsoft.Extensions.Options.IOptionsMonitor<SonarQubeSettings>>().CurrentValue;
+    client.BaseAddress = new Uri(settings.BaseUrl.TrimEnd('/') + "/");
+});
 
 builder.Services.AddScoped<ICodeMetricsService, CodeMetricsService>();
 builder.Services.AddScoped<ICodeMetricsDatabaseService, CodeMetricsDatabaseService>();
 builder.Services.AddSingleton<IOllamaService, OllamaService>();
-builder.Services.AddScoped<ISonarQubeService, SonarQubeService>(); 
+builder.Services.AddHostedService<SonarQubeTokenReadinessHostedService>();
 
 var giteaOptions = builder.Configuration.GetSection("Gitea").Get<GiteaOptions>()
     ?? throw new InvalidOperationException("Gitea configuration section is missing.");

@@ -1,11 +1,13 @@
 ﻿using CodeMetrics.Application.Contracts;
 using CodeMetrics.Application.DTOs.SonarQube;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CodeMetrics.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableCors("AllowAll")]
 public class SonarQubeController : ControllerBase
 {
     private readonly ISonarQubeService _sonarService;
